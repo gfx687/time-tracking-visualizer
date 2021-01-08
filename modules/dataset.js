@@ -1,9 +1,9 @@
 export const loadDataset = async () => {
-  let dataset = await d3.csv('http://localhost:8000/app-data/dataset.csv');
+  let dataset = await d3.csv('http://localhost:8000/dataset.csv');
   return dataset;
 }
 
-export const mapForPie= (dataset) => {
+export const mapForPie = (dataset) => {
   let origin = {
     name: 'origin',
     value: 0,
