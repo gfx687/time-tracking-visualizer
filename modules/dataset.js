@@ -29,7 +29,6 @@ export const mapForPie = (dataset) => {
   }
 
   removeChildrenIfOnlyUncategorized(origin);
-  // computeValues(origin, origin.value);
 
   return origin;
 }
@@ -47,16 +46,6 @@ function removeChildrenIfOnlyUncategorized(node) {
   for (const ch of node.children) {
     removeChildrenIfOnlyUncategorized(ch);
   }
-}
-
-function computeValues(node) {
-  if (!node.children)
-    return node.value;
-
-  for (const ch of node.children)
-    node.value += computeValues(ch);
-
-  return node.value;
 }
 
 function handleCategory(categoryName, splitsLen, root) {
