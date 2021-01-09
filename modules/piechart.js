@@ -79,11 +79,9 @@ export const Pie = (dataset) => {
 
     tooltipOnHover(event, hoveredArc);
 
-    const pieTransition = pieSvg.transition().duration(0);
     pie
-      .transition(pieTransition)
       .filter(arc => arc == hoveredArc)
-      .attrTween('d', d => () => arcHovered(d.current));
+      .attr('d', d => arcHovered(d.current));
   }
 
   function arcOnHoverLeave(event, hoveredArc) {
@@ -94,11 +92,9 @@ export const Pie = (dataset) => {
     if (isTransitioning || !isArcVisible(hoveredArc))
       return;
 
-    const pieTransition = pieSvg.transition().duration(0);
     pie
-      .transition(pieTransition)
       .filter(arc => arc == hoveredArc)
-      .attrTween('d', d => () => arc(d.current));
+      .attr('d', d => arc(d.current));
   }
 
   function clicked(event, itemClicked) {
@@ -116,28 +112,23 @@ export const Pie = (dataset) => {
 
     const pieTransition = pieSvg.transition().duration(750);
 
+    // .tween(...) updates .current each frame of transition to next position for an animation
+    // .attrTween(...) sets attribute to value returned by .tween(...)
     pie
       .transition(pieTransition)
       .tween('data', d => {
         const i = d3.interpolate(d.current, d.target);
         return t => d.current = i(t);
-      })
-      .filter(function (d) {
-        return +this.getAttribute('fill-opacity') || isArcVisible(d.target);
-      })
+      });
+
+    // since we are using the same transition, .tween(...) results are not lost, we can use .attrTween(...) twice
+    pie
+      .transition(pieTransition)
       .attr('fill-opacity', d => isArcVisible(d.target) ? (d.children ? 1 : 0.6) : 0)
       .style('cursor', d => isArcVisible(d.target) && d.children ? 'pointer' : '')
       .attrTween('d', d => () => arc(d.current))
-
     pieChildrenHint
       .transition(pieTransition)
-      .tween('data', d => {
-        const i = d3.interpolate(d.current, d.target);
-        return t => d.current = i(t);
-      })
-      .filter(function (d) {
-        return +this.getAttribute('fill-opacity') || isArcChildrenVisible(d.target);
-      })
       .attr('fill-opacity', d => isArcChildrenVisible(d.target) ? 0.6 : 0)
       .attrTween('d', d => () => arcChildrenHint(d.current));
 
