@@ -17,14 +17,14 @@ export const Pie = (dataset) => {
     .attr('viewBox', [0, 0, svgWidth, pieDiameter])
     .style('font', '15px sans-serif');
 
+  const pieSvg = svg.append('g')
+    .attr('transform', `translate(${pieDiameter / 2},${pieDiameter / 2})`);
+
   const hangleGroupChangeLegend = appendLegend(svg, root);
   const [tooltip, tooltipOnHover, tooltipOnLeave, tooltipOnMove] = PieTooltip(root.value);
 
   document.getElementById('pie').appendChild(svg.node());
   document.getElementById('pie').appendChild(tooltip.node());
-
-  const pieSvg = svg.append('g')
-    .attr('transform', `translate(${pieDiameter / 2},${pieDiameter / 2})`);
 
   const arc = arcBase()
     .innerRadius(d => d.y0 * radius)
@@ -38,6 +38,15 @@ export const Pie = (dataset) => {
     .innerRadius((visibleLayers + 1) * radius)
     .outerRadius((visibleLayers + 1) * radius + childrenArcWidth);
 
+  const pieChildrenHint = pieSvg
+    .append('g')
+    .selectAll('path')
+    .data(root.descendants().slice(1))
+    .join('path')
+    .attr('fill', d => color(d.data.name))
+    .attr('fill-opacity', d => isArcChildrenVisible(d.current) ? 0.6 : 0)
+    .attr('d', d => arcChildrenHint(d.current));
+
   const pie = pieSvg
     .append('g')
     .selectAll('path')
@@ -49,15 +58,6 @@ export const Pie = (dataset) => {
     .on('mouseover', arcOnHover)
     .on('mouseout', arcOnHoverLeave)
     .on('mousemove', tooltipOnMove);
-
-  const pieChildrenHint = pieSvg
-    .append('g')
-    .selectAll('path')
-    .data(root.descendants().slice(1))
-    .join('path')
-    .attr('fill', d => color(d.data.name))
-    .attr('fill-opacity', d => isArcChildrenVisible(d.current) ? 0.6 : 0)
-    .attr('d', d => arcChildrenHint(d.current));;
 
   pie.filter(d => d.children)
     .on('click', clicked);
@@ -72,23 +72,18 @@ export const Pie = (dataset) => {
     .on('click', clicked);
 
   function arcOnHover(event, hoveredArc) {
-    tooltipOnHover(event, hoveredArc);
-
     const isTransitioning = hoveredArc.target != undefined
       && hoveredArc.current.y0 !== hoveredArc.target.y0;
     if (isTransitioning || !isArcVisible(hoveredArc))
       return;
+
+    tooltipOnHover(event, hoveredArc);
 
     const pieTransition = pieSvg.transition().duration(0);
     pie
       .transition(pieTransition)
       .filter(arc => arc == hoveredArc)
       .attrTween('d', d => () => arcHovered(d.current));
-
-    pieChildrenHint
-      .transition(pieTransition)
-      .filter(arc => arc.parent?.data.name == hoveredArc.data.name)
-      .attr('fill-opacity', 0);
   }
 
   function arcOnHoverLeave(event, hoveredArc) {
@@ -104,11 +99,6 @@ export const Pie = (dataset) => {
       .transition(pieTransition)
       .filter(arc => arc == hoveredArc)
       .attrTween('d', d => () => arc(d.current));
-
-    pieChildrenHint
-      .transition(pieTransition)
-      .filter(arc => arc.parent?.data.name == hoveredArc.data.name)
-      .attr('fill-opacity', 0.6);
   }
 
   function clicked(event, itemClicked) {
@@ -259,3 +249,4 @@ function isArcChildrenVisible(d) {
   const visible = (d.current ? d.current.y0 : d.y0) == visibleLayers + 1;
   return visible && notMiddleCircle && d.x1 > d.x0;
 }
+
