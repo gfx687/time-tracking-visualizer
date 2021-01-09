@@ -4,9 +4,9 @@ const pieDiameter = 500;
 const legendWidth = 300;
 const svgWidth = pieDiameter + legendWidth;
 const labelHeight = 20;
-const visibleLayers = 1; // visible layers > 1 breaks legend
-const childrenArcWidth = 10
-const radius = pieDiameter / 2 / (visibleLayers + 1) - childrenArcWidth / 2; // 1 for middle circle
+const visibleLayers = 1;
+const childrenArcWidth = 10;
+const radius = pieDiameter / 2 / (visibleLayers + 1) - childrenArcWidth / 2;
 
 export const Pie = (dataset) => {
   const color = d3.scaleOrdinal(d3.quantize(d3.interpolateCool, dataset.children.length + 1));
@@ -44,7 +44,7 @@ export const Pie = (dataset) => {
     .data(root.descendants().slice(1))
     .join('path')
     .attr('fill', d => color(d.data.name))
-    .attr('fill-opacity', d => isArcChildrenVisible(d.current) ? 0.6 : 0)
+    .attr('fill-opacity', d => d.current.y0 == visibleLayers + 1 ? 0.6 : 0)
     .attr('d', d => arcChildrenHint(d.current));
 
   const pie = pieSvg
@@ -53,7 +53,7 @@ export const Pie = (dataset) => {
     .data(root.descendants().slice(1))
     .join('path')
     .attr('fill', d => color(d.data.name))
-    .attr('fill-opacity', d => isArcVisible(d.current) ? (d.children ? 1 : 0.6) : 0)
+    .attr('fill-opacity', d => isArcVisible(d) ? (d.children ? 1 : 0.6) : 0)
     .attr('d', d => arc(d.current))
     .on('mouseover', arcOnHover)
     .on('mouseout', arcOnHoverLeave)
@@ -104,6 +104,7 @@ export const Pie = (dataset) => {
     middleCircle.datum(itemClicked.parent || root);
 
     root.each(d => d.target = {
+      data: {name: d.data.name},
       x0: Math.max(0, Math.min(1, (d.x0 - itemClicked.x0) / (itemClicked.x1 - itemClicked.x0))) * 2 * Math.PI,
       x1: Math.max(0, Math.min(1, (d.x1 - itemClicked.x0) / (itemClicked.x1 - itemClicked.x0))) * 2 * Math.PI,
       y0: Math.max(0, d.y0 - itemClicked.depth),
@@ -124,12 +125,12 @@ export const Pie = (dataset) => {
     // since we are using the same transition, .tween(...) results are not lost, we can use .attrTween(...) twice
     pie
       .transition(pieTransition)
-      .attr('fill-opacity', d => isArcVisible(d.target) ? (d.children ? 1 : 0.6) : 0)
-      .style('cursor', d => isArcVisible(d.target) && d.children ? 'pointer' : '')
+      .attr('fill-opacity', d => d.parent === itemClicked ? (d.children ? 1 : 0.6) : 0)
+      .style('cursor', d => d.parent === itemClicked && d.children ? 'pointer' : '')
       .attrTween('d', d => () => arc(d.current))
     pieChildrenHint
       .transition(pieTransition)
-      .attr('fill-opacity', d => isArcChildrenVisible(d.target) ? 0.6 : 0)
+      .attr('fill-opacity', d => d.parent?.parent === itemClicked ? 0.6 : 0)
       .attrTween('d', d => () => arcChildrenHint(d.current));
 
     hangleGroupChangeLegend(event, itemClicked);
@@ -185,7 +186,7 @@ function appendLegend(svg, root) {
   }
 
   function getLegendText(item) {
-    // TODO : before simplifying name, need to add info about currently visible group
+    // before simplifying name, need to add info about currently visible group
     // if (item.data.name.indexOf(item.parent?.data.name) == 0)
     //   return item.data.name.substring(item.parent?.data.name.length + 1);
     return item.data.name;
@@ -206,7 +207,7 @@ function partition(data) {
   let currentIndex = 0;
   let prevParentName;
   root.each(d => {
-    d.current = d; // TODO : why do we need this?
+    d.current = d;
 
     if (d.parent?.data.name != prevParentName) {
       prevParentName = d.parent?.data.name;
@@ -228,16 +229,7 @@ function arcBase() {
     .padRadius(radius * 2);
 }
 
-// TODO : what is `d.x1 > d.x0` for?
 function isArcVisible(d) {
-  const notMiddleCircle = d.y0 >= 1;
-  const visible = (d.current ? d.current.y0 : d.y0) <= visibleLayers;
-  return visible && notMiddleCircle && d.x1 > d.x0;
-}
-
-function isArcChildrenVisible(d) {
-  const notMiddleCircle = d.y0 >= 1;
-  const visible = (d.current ? d.current.y0 : d.y0) == visibleLayers + 1;
-  return visible && notMiddleCircle && d.x1 > d.x0;
+  return d.current.y0 <= visibleLayers;
 }
 
